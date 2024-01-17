@@ -13,7 +13,7 @@ const galleryElement = document.querySelector('.gallery');
 const loadingContainer = document.querySelector('.loading-container');
 
 let pageNumber = 1;
-let perPage = 40;
+const perPage = 40;
 let inputValue = ''; 
 let totalHits = 0;
 
@@ -81,17 +81,16 @@ async function searchImage(params) {
             })
 
             simpleBoxContent.refresh();
-            pageNumber += 1;
             loadButton.style.display = 'flex';
             
-            if (pageNumber > 2) {
+            if (pageNumber > 1) {
                 const cardHeight = getGalleryCardHeight();
                 smoothScrollBy(2 * cardHeight);
             }
           
             totalHits = newTotalHits;
 
-            if (pageNumber >= Math.ceil(totalHits / perPage)) {
+            if (pageNumber * perPage >= totalHits) {
 
                 loadButton.style.display = 'none';
 
@@ -112,7 +111,7 @@ async function searchImage(params) {
         }  catch(error) {
             iziToast.error({
                 title: 'Error',
-                message: error.message,
+                message: `An error occurred while loading images. Please try again later.`,
                 position: 'topRight',
             })
         }
@@ -123,6 +122,7 @@ async function searchImage(params) {
 }
 
     function loadMoreImages() {
+        pageNumber += 1;
         inputValue = inputElement.value.trim();
         const searchParams = new URLSearchParams({
             ...api.defaults.params,
