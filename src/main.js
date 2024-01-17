@@ -1,13 +1,5 @@
 'use strict'
 
-//  const initialParams = {
-//     key: '41688461-d2a05e0fbe969f7f46dd1fb4f',
-//     q: '',
-//     image_type: 'photo',
-//     orientation: 'horizontal',
-//     safesearch: true,
-// }
-
 import axios from "axios";
 import iziToast from "izitoast";
 import "izitoast/dist/css/iziToast.min.css";
@@ -20,9 +12,10 @@ const loadButton = document.querySelector('.load-btn');
 const galleryElement = document.querySelector('.gallery');
 const loadingContainer = document.querySelector('.loading-container');
 
-let page = 1;
+let pageNumber = 1;
 let perPage = 40;
-let inputValue = inputElement.value.trim()
+let inputValue = ''; 
+let totalHits = 0;
 
 const api = axios.create({
     baseURL: "https://pixabay.com/api/",
@@ -32,18 +25,32 @@ const api = axios.create({
         image_type: 'photo',
         orientation: 'horizontal',
         safesearch: true,  
-        page: page,
+        page: pageNumber,
         per_page: perPage, 
     }
 })
 
-function searchImage(params) {
-    
-    api.get('', {
-        params: params,
+function getGalleryCardHeight() {
+    const galleryCard = document.querySelector('.gallery-list');
+    const cardReact = galleryCard.getBoundingClientRect();
+    return cardReact.height; 
+}
+
+function smoothScrollBy(height) {
+    window.scrollBy({
+        top: height,
+        behavior: 'smooth',
     })
-        .then(response => { 
-            const { hits } = response.data;
+}
+
+async function searchImage(params) {
+    
+    try {
+        const response = await api.get('', {
+            params: params,
+        })
+   
+        const { hits, totalHits: newTotalHits } = response.data;
 
             if(hits.length > 0) {
            const rendedImages = hits.reduce((html, 
@@ -74,35 +81,57 @@ function searchImage(params) {
             })
 
             simpleBoxContent.refresh();
-            page += 1;
+            pageNumber += 1;
+            loadButton.style.display = 'flex';
+            
+            if (pageNumber > 2) {
+                const cardHeight = getGalleryCardHeight();
+                smoothScrollBy(2 * cardHeight);
+            }
+          
+            totalHits = newTotalHits;
+
+            if (pageNumber >= Math.ceil(totalHits / perPage)) {
+
+                loadButton.style.display = 'none';
+
+                iziToast.info({
+                    position: 'topRight',
+                    message: `We're sorry, but you've reached the end of search results.`,
+                })
+            }
+
         } else {
             iziToast.error({
                 position: 'topRight',
                 message: `Sorry, there are no images matching your search query. Please try again!`,
             })
+
+            loadButton.style.display = 'none';
         }
-        })
-        .catch(error => {
+        }  catch(error) {
             iziToast.error({
                 title: 'Error',
                 message: error.message,
                 position: 'topRight',
             })
-        })
-        .finally(() => {
-            loadingContainer.classList.remove('is-open');
-            loadButton.classList.add('is-open');
-        })
+        }
+        finally {
+            loadingContainer.style.display = 'none';
+        }
         
 }
 
     function loadMoreImages() {
-        page += 1;
+        inputValue = inputElement.value.trim();
         const searchParams = new URLSearchParams({
-            page: page,
-            q: inputValue,
             ...api.defaults.params,
+            page: pageNumber,
+            q: inputValue,
         })
+
+        loadingContainer.style.display = 'flex'; 
+        loadButton.style.display = 'none'; 
 
         searchImage(searchParams)
     }
@@ -118,15 +147,19 @@ function searchImage(params) {
 
 
         if(galleryElement.innerHTML === "") {
-            loadingContainer.classList.add('is-open');
+            loadingContainer.style.display = 'flex';
         }
+
+        pageNumber = 1;
+
+        inputValue = inputElement.value.trim();
+        loadButton.style.display = 'none';
 
         const params = {
             ...api.defaults.params,
-            q: inputElement.value,
-            page: page,
+            q: inputValue,
+            page: pageNumber,
         }
+
         searchImage(params);
     });
-
-    
